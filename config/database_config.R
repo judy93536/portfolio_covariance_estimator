@@ -2,10 +2,10 @@
 # DO NOT commit database_config.R to git!
 
 DATABASE_CONFIG <- list(
-  server = "192.168.1.32",
-  database = "sharadar", 
-  username = "options",
-  password = "n841CM12",
+  server = "xx.xx.xx.xx",
+  database = "xx", 
+  username = "xx",
+  password = "xx",
   port = 5432
 )
 
