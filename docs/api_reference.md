@@ -410,6 +410,55 @@ exportPortfolioBacktest(filename = NULL, output_dir = ".")
 
 ---
 
+## Rcpp Optimization Functions
+
+### deoptim_portfolio_rcpp()
+
+High-performance portfolio optimization using differential evolution.
+
+```r
+deoptim_portfolio_rcpp(returns, cov_matrix, min_weight = 0.01, max_weight = 0.15,
+                      pop_size = 50, max_iter = 200, F = 0.8, CR = 0.9,
+                      ncores = 1, DEBUG = FALSE, objective = "mean_variance",
+                      risk_aversion = 0.5, risk_free_rate = 0.0)
+```
+
+**Parameters:**
+- `returns`: Matrix of asset returns
+- `cov_matrix`: Covariance matrix of returns
+- `min_weight`: Minimum weight per asset (default: 0.01)
+- `max_weight`: Maximum weight per asset (default: 0.15)
+- `pop_size`: Population size for differential evolution (default: 50)
+- `max_iter`: Maximum iterations (default: 200)
+- `F`: Differential weight parameter (default: 0.8)
+- `CR`: Crossover probability (default: 0.9)
+- `ncores`: Number of cores for parallel processing
+- `DEBUG`: Print debug information
+- `objective`: Optimization objective ("mean_variance", "max_sharpe", "min_variance")
+- `risk_aversion`: Risk aversion parameter for mean-variance
+- `risk_free_rate`: Annual risk-free rate for Sharpe calculation
+
+**Returns:** Vector of optimal portfolio weights
+
+**Example:**
+```r
+# Compile the C++ code
+Rcpp::sourceCpp("src/rcpp_deoptim.cpp")
+
+# Optimize for maximum Sharpe ratio
+optimal_weights <- deoptim_portfolio_rcpp(
+  returns = portfolio_returns,
+  cov_matrix = cov_matrix,
+  min_weight = 0.02,
+  max_weight = 0.10,
+  objective = "max_sharpe",
+  risk_free_rate = 0.04,
+  ncores = 4
+)
+```
+
+---
+
 ## Configuration Options
 
 ### Database Configuration

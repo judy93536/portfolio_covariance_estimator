@@ -1,0 +1,27 @@
+## Makevars for PortfolioOptimizer package
+## Compilation flags for high-performance Rcpp with OpenMP
+
+# C++ standard
+CXX_STD = CXX11
+
+# Optimization flags
+PKG_CXXFLAGS = -O3 -march=native -mtune=native -ffast-math
+
+# OpenMP support (comment out if not available)
+PKG_CXXFLAGS += -fopenmp
+PKG_LIBS += -fopenmp
+
+# RcppArmadillo configuration
+PKG_CXXFLAGS += -DARMA_64BIT_WORD=1
+PKG_CXXFLAGS += -DARMA_DONT_USE_WRAPPER
+PKG_CXXFLAGS += -DARMA_USE_LAPACK
+PKG_CXXFLAGS += -DARMA_USE_BLAS
+
+# Additional performance flags
+PKG_CXXFLAGS += -DNDEBUG
+PKG_CXXFLAGS += -DARMA_NO_DEBUG
+
+# Warning flags (optional, good for development)
+# PKG_CXXFLAGS += -Wall -Wextra -Wpedantic
+
+

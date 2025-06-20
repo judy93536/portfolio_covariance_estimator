@@ -1,12 +1,13 @@
 # Value Stock Screening Example
-# Demonstrates comprehensive value investing analysis using Sharadar data
+# Demonstrates how to find undervalued S&P 500 stocks using fundamental criteria
 
-# Load required libraries and classes
+# Load required libraries and source files
 source("R/SharadarData.R")
 source("config/database_config.R")
 
+cat("=== VALUE STOCK SCREENING EXAMPLE ===\n\n")
+
 # Initialize data connection
-cat("Initializing Sharadar data connection...\n")
 sharadar <- SharadarData$new(
   DATABASE_CONFIG$server,
   DATABASE_CONFIG$database,
@@ -14,178 +15,85 @@ sharadar <- SharadarData$new(
   DATABASE_CONFIG$password
 )
 
-# =============================================================================
-# BASIC VALUE SCREENING
-# =============================================================================
+# Example 1: Basic value screening with default parameters
+cat("1. Basic Value Screening\n")
+cat("   Criteria: P/E <= 15, P/B <= 3, Dividend Yield >= 2%\n\n")
 
-cat("\n=== BASIC VALUE STOCK SCREENING ===\n")
-
-# Screen for S&P 500 value stocks with conservative criteria
 value_stocks <- sharadar$screenValueStocks(
-  min_dividend_yield = 2.5,    # At least 2.5% yield
-  max_pe = 15.0,               # P/E ratio under 15
-  max_pb = 3.0,                # P/B ratio under 3
-  min_market_cap = 10000,      # $10B+ market cap (large caps only)
-  sp500_only = TRUE            # S&P 500 constituents only
+  min_dividend_yield = 2.0,
+  max_pe = 15.0,
+  max_pb = 3.0,
+  min_market_cap = 5000,  # $5B minimum
+  sp500_only = TRUE
 )
 
-cat(sprintf("Found %d value stocks meeting criteria\n", nrow(value_stocks)))
-cat("Top 10 value opportunities:\n")
-print(head(value_stocks, 10))
-
-# =============================================================================
-# SECTOR-SPECIFIC VALUE ANALYSIS
-# =============================================================================
-
-cat("\n=== SECTOR-SPECIFIC VALUE ANALYSIS ===\n")
-
-# Analyze value opportunities by sector
-value_sectors <- c("Financial Services", "Utilities", "Energy", 
-                  "Consumer Defensive", "Communication Services")
-
-for (sector in value_sectors) {
-  sector_value <- sharadar$screenValueStocks(
-    sector = sector,
-    min_dividend_yield = 2.0,
-    max_pe = 15.0,
-    max_pb = 3.0,
-    min_market_cap = 5000,
-    sp500_only = TRUE
-  )
+if (nrow(value_stocks) > 0) {
+  cat(sprintf("Found %d value stocks meeting criteria\n\n", nrow(value_stocks)))
   
-  if (nrow(sector_value) > 0) {
-    cat(sprintf("\n%s: %d stocks found\n", sector, nrow(sector_value)))
-    cat(sprintf("  Top pick: %s (%.1f%% yield, %.1f P/E)\n", 
-               sector_value$ticker[1], 
-               sector_value$dividend_yield_pct[1],
-               sector_value$pe[1]))
-  } else {
-    cat(sprintf("\n%s: No stocks meeting criteria\n", sector))
+  # Display top 10 by dividend yield
+  cat("Top 10 by dividend yield:\n")
+  top_stocks <- head(value_stocks[order(-value_stocks$dividend_yield_pct), ], 10)
+  print(top_stocks[, c("ticker", "sector", "pe", "pb", "dividend_yield_pct", "market_cap_millions")])
+  
+  # Summary statistics
+  cat("\nPortfolio Summary:\n")
+  cat(sprintf("Average P/E: %.1f\n", mean(value_stocks$pe)))
+  cat(sprintf("Average P/B: %.2f\n", mean(value_stocks$pb)))
+  cat(sprintf("Average Dividend Yield: %.1f%%\n", mean(value_stocks$dividend_yield_pct)))
+  cat(sprintf("Total Market Cap: $%.0fB\n", sum(value_stocks$market_cap_millions) / 1000))
+} else {
+  cat("No stocks found meeting criteria. Try relaxing the filters.\n")
+}
+
+# Example 2: Sector-specific value screening
+cat("\n\n2. Sector-Specific Value Screening\n")
+cat("   Looking for value in Financial Services sector\n\n")
+
+financial_value <- sharadar$screenValueStocks(
+  sector = "Financial Services",
+  min_dividend_yield = 2.5,
+  max_pe = 12.0,
+  max_pb = 1.5,
+  sp500_only = TRUE
+)
+
+if (nrow(financial_value) > 0) {
+  cat(sprintf("Found %d financial sector value stocks\n", nrow(financial_value)))
+  print(financial_value[, c("ticker", "industry", "pe", "pb", "dividend_yield_pct")])
+}
+
+# Example 3: Finding 15-20 stocks for a portfolio
+cat("\n\n3. Building a 20-Stock Value Portfolio\n")
+cat("   Using relaxed criteria to get ~20 stocks\n\n")
+
+portfolio_stocks <- sharadar$screenValueStocks(
+  min_market_cap = 5000,      # $5B+ for liquidity
+  min_dividend_yield = 1.5,   # Decent yield
+  max_pe = 20.0,              # Reasonable P/E
+  max_pb = 3.5,               # Slightly relaxed P/B
+  sp500_only = TRUE
+)
+
+# Take top 20 by dividend yield
+if (nrow(portfolio_stocks) >= 20) {
+  portfolio_20 <- head(portfolio_stocks[order(-portfolio_stocks$dividend_yield_pct), ], 20)
+  
+  cat(sprintf("Selected %d stocks for portfolio\n\n", nrow(portfolio_20)))
+  
+  # Sector breakdown
+  cat("Sector Diversification:\n")
+  sector_counts <- table(portfolio_20$sector)
+  for (sector in names(sort(sector_counts, decreasing = TRUE))) {
+    cat(sprintf("  %s: %d stocks (%.0f%%)\n", 
+               sector, sector_counts[sector], 
+               sector_counts[sector] / sum(sector_counts) * 100))
   }
+  
+  # Export results
+  output_file <- paste0("exports/value_portfolio_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
+  if (!dir.exists("exports")) dir.create("exports")
+  write.csv(portfolio_20, output_file, row.names = FALSE)
+  cat(sprintf("\nPortfolio exported to: %s\n", output_file))
 }
 
-# =============================================================================
-# DIVIDEND ANALYSIS
-# =============================================================================
-
-cat("\n=== DIVIDEND SUSTAINABILITY ANALYSIS ===\n")
-
-# Analyze dividend history for top 10 value stocks
-top_value_tickers <- head(value_stocks$ticker, 10)
-
-dividend_analysis <- sharadar$getDividendAnalysis(
-  top_value_tickers, 
-  years_back = 10
-)
-
-# Summarize dividend consistency
-dividend_summary <- dividend_analysis %>%
-  group_by(ticker) %>%
-  summarise(
-    years_of_data = n(),
-    avg_annual_dividend = mean(annual_dividend, na.rm = TRUE),
-    dividend_cuts = sum(no_cut_flag == 0, na.rm = TRUE),
-    dividend_consistency = sum(no_cut_flag == 1, na.rm = TRUE) / sum(!is.na(no_cut_flag)) * 100,
-    .groups = 'drop'
-  ) %>%
-  arrange(desc(dividend_consistency))
-
-cat("Dividend consistency analysis (top 5):\n")
-print(head(dividend_summary, 5))
-
-# =============================================================================
-# PRICE POSITIONING ANALYSIS  
-# =============================================================================
-
-cat("\n=== CURRENT PRICE POSITIONING ===\n")
-
-# Get current price metrics for all value stocks
-price_metrics <- sharadar$getPriceMetrics(value_stocks$ticker)
-
-# Merge with fundamental data
-complete_analysis <- merge(value_stocks, price_metrics, by = "ticker", all.x = TRUE)
-
-# Identify deep value opportunities (stocks near 52-week lows)
-deep_value <- complete_analysis[
-  !is.na(complete_analysis$pct_of_52w_range) & 
-  complete_analysis$pct_of_52w_range < 40, 
-]
-
-if (nrow(deep_value) > 0) {
-  cat(sprintf("Found %d stocks trading in bottom 40%% of 52-week range:\n", nrow(deep_value)))
-  deep_value_summary <- deep_value[, c("ticker", "dividend_yield_pct", "pe", 
-                                      "current_price", "pct_of_52w_range", "pct_off_high")]
-  print(head(deep_value_summary, 5))
-} else {
-  cat("No stocks currently trading in bottom 40% of 52-week range\n")
-}
-
-# =============================================================================
-# HIGH-YIELD OPPORTUNITIES
-# =============================================================================
-
-cat("\n=== HIGH-YIELD OPPORTUNITIES ===\n")
-
-# Focus on highest yielding stocks with reasonable valuations
-high_yield <- value_stocks[
-  value_stocks$dividend_yield_pct >= 4.0 & 
-  value_stocks$pe <= 12.0,
-]
-
-if (nrow(high_yield) > 0) {
-  cat(sprintf("Found %d high-yield stocks (4%+ yield, P/E <= 12):\n", nrow(high_yield)))
-  high_yield_summary <- high_yield[, c("ticker", "sector", "dividend_yield_pct", 
-                                      "pe", "pb", "market_cap_millions")]
-  print(head(high_yield_summary, 5))
-} else {
-  cat("No stocks meeting high-yield criteria\n")
-}
-
-# =============================================================================
-# EXPORT RESULTS
-# =============================================================================
-
-cat("\n=== EXPORTING ANALYSIS RESULTS ===\n")
-
-# Export comprehensive analysis
-export_result <- sharadar$exportCompleteAnalysis(
-  value_stocks = complete_analysis,
-  dividend_analysis = dividend_analysis,
-  price_metrics = price_metrics,
-  output_dir = "exports",
-  project_name = "value_stock_analysis"
-)
-
-cat("Analysis exported to:", export_result$output_directory, "\n")
-
-# Create summary report
-summary_stats <- data.frame(
-  metric = c("total_value_stocks", "avg_dividend_yield", "avg_pe_ratio", 
-            "avg_market_cap_billions", "stocks_with_price_data"),
-  value = c(
-    nrow(value_stocks),
-    round(mean(value_stocks$dividend_yield_pct), 2),
-    round(mean(value_stocks$pe), 2),
-    round(mean(value_stocks$market_cap_millions) / 1000, 1),
-    nrow(price_metrics)
-  )
-)
-
-write.csv(summary_stats, 
-          file.path(export_result$output_directory, "summary_statistics.csv"),
-          row.names = FALSE)
-
-cat("\n=== ANALYSIS COMPLETE ===\n")
-cat("Key findings:\n")
-cat(sprintf("- Found %d S&P 500 value stocks\n", nrow(value_stocks)))
-cat(sprintf("- Average dividend yield: %.2f%%\n", mean(value_stocks$dividend_yield_pct)))
-cat(sprintf("- Average P/E ratio: %.1f\n", mean(value_stocks$pe)))
-cat(sprintf("- %d stocks have complete price data\n", nrow(price_metrics)))
-
-if (nrow(deep_value) > 0) {
-  cat(sprintf("- %d stocks trading near 52-week lows (potential opportunities)\n", nrow(deep_value)))
-}
-
-cat("\nFiles exported to:", export_result$output_directory, "\n")
-
-
+cat("\n✓ Value screening example complete!\n")

@@ -7,6 +7,7 @@ A comprehensive R framework for advanced portfolio covariance estimation and val
 - **Advanced Covariance Estimation**: Six different methods including Ledoit-Wolf shrinkage, Random Matrix Theory, and identity-based approaches
 - **Value Stock Screening**: Sophisticated fundamental analysis with dividend history and price metrics
 - **Sector-Based Portfolio Construction**: Automated sector diversification with liquidity filtering
+- **Portfolio Optimization**: Rcpp-powered differential evolution optimizer with Sharpe ratio maximization
 - **Data Source Comparison**: Framework for comparing different financial data providers
 - **Export Capabilities**: Complete CSV export functionality for reproducible research
 
@@ -31,7 +32,7 @@ Our empirical analysis reveals several important insights:
 # Required R packages
 install.packages(c(
   "R6", "DBI", "RPostgres", "tidyr", "dplyr", 
-  "xts", "quadprog", "Matrix"
+  "xts", "quadprog", "Matrix", "Rcpp", "RcppArmadillo"
 ))
 ```
 
